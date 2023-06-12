@@ -1,0 +1,40 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            //"name": "Python: Current File",
+            //"type": "python",
+            //"request": "launch",
+            //"program": "${file}",
+            //"console": "integratedTerminal"
+            
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "occulsion/sam_han_train.py",//"/home/percv-d10/anaconda3/envs/SAM/lib/python3.9/site-packages/torch/distributed/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                //"scripts/amg.py",
+                //"cplusmodel.py",sam_vit_b_01ec64
+                //"--sam_checkpoint","./sam_vit_h_4b8939.pth",
+                "--sam_checkpoint","./sam_vit_b_01ec64.pth",
+                "--model_type","vit_b",
+                "--optional",
+                "sa_227195.jpg",
+                "--drop_ratio",
+                "0.1",
+                "--seed",
+                "1234",
+                "--point_coords_x",
+                "512",
+                "--point_coords_y",
+                "512"
+             
+            ],
+            //"env": {"CUDA_VISIBLE_DEVICES":"0"},
+        }
+    ]
+}s

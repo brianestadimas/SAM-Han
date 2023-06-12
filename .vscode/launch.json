@@ -1,0 +1,44 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      //"name": "Python: Current File",
+      //"type": "python",
+      //"request": "launch",
+      //"program": "${file}",
+      //"console": "integratedTerminal"
+
+      "name": "Python: Current File",
+      "type": "python",
+      "request": "launch",
+      //"
+      "program": "occulsion/sam_han_multi_train.py",
+      "console": "integratedTerminal",
+      "args": [
+        //"occulsion/sam_han_multi_train.py",
+        //"cplusmodel.py",sam_vit_b_01ec64
+        //"--sam_checkpoint","./sam_vit_h_4b8939.pth",
+        "--sam_checkpoint",
+        "./sam_vit_b_01ec64.pth",
+        "--model_type",
+        "vit_b",
+        "--Change",
+        "True",
+        "--Showfig",
+        "True",
+        "--optional",
+        "100",
+        "--point_coords_x",
+        "512",
+        "--point_coords_y",
+        "512"
+        // "--gpu_ids",
+        // "0,1"
+      ],
+      "env": { "CUDA_VISIBLE_DEVICES": "0" }
+    }
+  ]
+}
