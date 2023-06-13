@@ -20,6 +20,7 @@ class MyDataset(Dataset):
         #sortkey = lambda key: os.path.split(key)[-1]
         self.datadir=datadir
         self.fns = fns or os.listdir(join(datadir, 'images'))
+        self.fns = [fn for fn in self.fns if fn.endswith('.jpg')]
         #self.paths = sorted(make_dataset(datadir, fns), key=sortkey)
         #if size is not None:
         #    self.paths = self.paths[:size]
@@ -36,8 +37,6 @@ class MyDataset(Dataset):
         
         resized_image = cv2.resize(image, (1024, 1024))
         features = join(self.datadir,'features',feature_n)
-
-        #y = self.labels[index]
         return {'resized_image':resized_image,'features_path':features}# y
 def show_mask(mask, ax, random_color=False):
     if random_color:
@@ -158,110 +157,32 @@ parser.add_argument("--point_coords_x", type=int)
 parser.add_argument("--point_coords_y", type=int)
 args = parser.parse_args()
 
-def main(args):
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed(args.seed)
-    
+def main(args):    
     sam_checkpoint = args.sam_checkpoint
     model_type = args.model_type
     device = "cuda"
     sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
     sam.to(device=device)
-    
-    image_files = ['sa_227195', 'sa_228197', 'sa_232600', 'sa_233167', 'sa_234809']
-    args.optional = 'sa_227195.jpg'
-    
-    image_name = os.path.split(args.optional)[1].split('.')[0]
-    #image_path = os.path.dirname(__file__) + '/datasets/sam_datasets/' + args.optional
-    image_path = os.path.dirname(os.path.dirname(__file__)) + './sam_data100/' + args.optional
-    
-    # # import pdb;pdb.set_trace()
-    image = cv2.imread(image_path)
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    
-    resized_image = cv2.resize(image, (1024, 1024))
-    
-    out_dir = os.path.join(os.path.dirname(__file__) + "/results/", image_name)
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-
-    # iou_dir = os.path.join(os.path.dirname(__file__) + "/results/", model_type + "_iou_ratio_" + str(args.drop_ratio))
-    # if not os.path.exists(iou_dir):
-    #     os.makedirs(iou_dir)
-
-    # image_list = []
-    # image_list.append(resized_image)
-    # show resized images
-    # plt.figure(figsize=(10,10))
-    # plt.imshow(resized_image)
-    # #plt.axis('off')
-    # plt.savefig("{}.png".format(out_dir + '/resized_image'), bbox_inches='tight', pad_inches = 0.0)
-    # plt.show()
-    
-    # define patch size
-    patch_size = 16
-    
-    # divide image into patches
-    patches = divide_image_into_patches(resized_image, patch_size)
-    
-    if args.occulsion_type == 'random':
-        # set drop ratio
-        dropped_patches, drop_indices = random_drop_patches(patches, args.drop_ratio)
-
-    
-    # Select a coordinate that is not in drop_indices
-    valid_indices = set(range(len(patches))) - set(drop_indices)
-    selected_index = np.random.choice(list(valid_indices))
-    selected_row = selected_index // (1024 // patch_size)
-    selected_col = selected_index % (1024 // patch_size)
-    # Calculate the pixel position of the coordinate point
-    x = selected_col * patch_size + patch_size // 2
-    y = selected_row * patch_size + patch_size // 2
-    #### random point
-    
-    input_point = np.array([[x, y]])    
+    input_point = np.array([[args.point_coords_x, args.point_coords_y]]) # prompt point coordinates
     input_label = np.array([1])
-    clean_mask = []
-    occ_mask = []
     i = 0
-    occulsion_names = ['original', 'occulsion']
     dataset = MyDataset('./data/val')
-    dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
     predictor = SamPredictor_gfeature(sam)
     sam.eval()
     #### random point
     i=0
-    pp=1
-    ppp1=0
-    list_1=[]
-    # for cb in dataloader:
-    #     i=i+1
-    #     ppp=np.load(cb['features_path'][0]) 
-    #     if(i<=100):
-    #         ppp1=ppp1+ppp
-    #         if(i==100):
-    #             mean=ppp1/100.0
-    #             #mean=torch.from_numpy(mean)
-    #         #pp=pp+1
-    #         #continue
-    #     # if(pp==1):
-    #     #     mean=ppp1/100.0
-    #     #     mean=torch.from_numpy(mean)
-    #     #     pp=pp+1
-    #     # ppp=torch.from_numpy(ppp)
-    #     # cosine=torch.cosine_similarity(mean.flatten(),ppp.flatten(),dim=-1)
-    #     # list_1.append(cosine)
     # #mean.numpy()
     # np.save('./model_output/mean_100.npy', mean)         
     for cb in dataloader:
         # input_image_torch = resized_image.permute(0,3, 1, 2).contiguous()
         # input_image_torch=sam.preprocess(input_image_torch)
         predictor.featurename=cb['features_path']
-        predictor.set_image(cb['resized_image'][0].numpy())
+        with torch.no_grad():
+            predictor.set_image(cb['resized_image'][0].numpy())
         i=i+1
-        if (i>50000):
-            break
+        #if (i>50000):
+        #    break
         # point 
         # masks, scores, logits = predictor.predict(
         #     point_coords=input_point,
@@ -294,16 +215,10 @@ def main(args):
         print("save occlusion mask success")
         print(i)
         #i += 1
-        torch.cuda.empty_cache()
-        import gc 
-        gc.collect()           
-    
-    plt.figure(figsize=(10,10))
-    plt.imshow(resized_image)
+    torch.cuda.empty_cache()
+    import gc 
+    gc.collect()           
     show_points(input_point, input_label, plt.gca())
-    plt.axis('off')
-    plt.savefig("{}.png".format(out_dir + '/original_w_point_' + model_type + '_ratio_'+str(args.drop_ratio)), bbox_inches='tight', pad_inches = 0.0)
-    plt.close() 
     
     print("save occulsion images success") 
 
