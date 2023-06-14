@@ -15,17 +15,17 @@ from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 import torch.nn as nn
 #BaseDataset = torchdata.Dataset
-batch_size = 4
+batch_size = 1
 shuffle = True
 import os.path
 from os.path import join
 from datetime import datetime
 from segment_anything.utils.transforms import ResizeLongestSide
-gpu_list = '0,1'  # Example: GPUs 0 and 1
+gpu_list = '5'  # Example: GPUs 0 and 1
 os.environ['CUDA_VISIBLE_DEVICES'] = gpu_list
 device = "cuda"
 #device = torch.device("cuda:0,1")
-device_ids = [0, 1]  # 使用 GPU 0 和 1
+device_ids = [5]  # 使用 GPU 0 和 1
     
 # IMG_EXTENSIONS = [
 #     '.jpg', #'.JPG', '.jpeg', '.JPEG',

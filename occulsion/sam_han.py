@@ -166,7 +166,7 @@ def main(args):
     input_point = np.array([[args.point_coords_x, args.point_coords_y]]) # prompt point coordinates
     input_label = np.array([1])
     i = 0
-    dataset = MyDataset('./data/val')
+    dataset = MyDataset('./data/train')
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
     predictor = SamPredictor_gfeature(sam)
     sam.eval()
