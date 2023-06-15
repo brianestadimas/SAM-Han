@@ -348,7 +348,7 @@ class SamPredictor_gfeature:
         self.transform = ResizeLongestSide(sam_model.image_encoder.img_size)
         self.reset_image()
         self.featurename=1
-        self.ppppp=[]
+        #self.ppppp=[]
     def set_image(
         self,
         image: np.ndarray,
@@ -404,7 +404,7 @@ class SamPredictor_gfeature:
         self.original_size = original_image_size
         self.input_size = tuple(transformed_image.shape[-2:])
         input_image = self.model.preprocess(transformed_image)
-        self.ppppp.append(input_image)
+        #self.ppppp.append(input_image)
         # self.reset_image()
         # self.original_size = original_image_size
         # self.input_size = tuple(transformed_image.shape[-2:])

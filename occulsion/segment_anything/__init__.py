@@ -10,7 +10,7 @@ from .build_sam import (
     build_sam_vit_l,
     build_sam_vit_b,
     sam_model_registry,
-    sam_model_registry_train
+    sam_model_registry_train,
 )
 from .predictor import SamPredictor, SamPredictor_gfeature
 from .automatic_mask_generator import SamAutomaticMaskGenerator

@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 import cv2
-from segment_anything import sam_model_registry, SamPredictor,SamPredictor_gfeature
+
 from torchvision.utils import save_image
 import sys, math, os
 import argparse
@@ -13,6 +13,13 @@ from torchvision import transforms
 from PIL import Image
 from os.path import join
 from torch.utils.data import DataLoader, Dataset
+from torch.nn.parallel import DataParallel
+
+segment_anything_path = os.path.join(os.getcwd(), "segment_anything")
+sys.path.append(segment_anything_path)
+from segment_anything import sam_model_registry, SamPredictor,SamPredictor_gfeature
+from segment_anything.utils.transforms import ResizeLongestSide
+
 class MyDataset(Dataset):
     def __init__(self, datadir,fns=None):
         #self.data = data
@@ -146,6 +153,12 @@ def measure_star_positon(dropped_patches, resized_image, patch_size, selected_in
     plt.savefig("{}.png".format(out_dir + '/new_1'), bbox_inches='tight', pad_inches = 0.0)
     plt.show()
 
+def move_to_device(data, device):
+    if isinstance(data, (list, tuple)):
+        return [move_to_device(d, device) for d in data]
+    else:
+        return data.to(device)
+
 parser = argparse.ArgumentParser(description='SAM')
 parser.add_argument('--seed', default=1234, type=int)
 parser.add_argument("--occulsion_type", type=str, choices=['random', 'give_point'], default='random')
@@ -160,64 +173,62 @@ args = parser.parse_args()
 def main(args):    
     sam_checkpoint = args.sam_checkpoint
     model_type = args.model_type
-    device = "cuda"
+    device = "cuda:6"
+    
     sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
     sam.to(device=device)
+    
+    # sam = DataParallel(sam, device_ids=device_ids)
+    
     input_point = np.array([[args.point_coords_x, args.point_coords_y]]) # prompt point coordinates
     input_label = np.array([1])
-    i = 0
+    # i = 0
     dataset = MyDataset('./data/train')
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
     predictor = SamPredictor_gfeature(sam)
+    
+    # sam = DataParallel(sam, device_ids=device_ids)
+    # predictor = DataParallel(predictor, device_ids=device_ids)
+    
     sam.eval()
     #### random point
     i=0
     # #mean.numpy()
-    # np.save('./model_output/mean_100.npy', mean)         
+    # np.save('./model_output/mean_100.npy', mean)
+
+    # for i in range(0, 10001):
+    #     cb = dataloader[i]
+    #     predictor.featurename=cb['features_path']
+    #     with torch.no_grad():
+    #         predictor.set_image(cb['resized_image'][0].numpy())
+    #     print("save occlusion mask success")
+    #     print(i)
+        
+    #     torch.cuda.empty_cache()
+    #     import gc 
+    #     gc.collect()  
+    i = 0
     for cb in dataloader:
         # input_image_torch = resized_image.permute(0,3, 1, 2).contiguous()
         # input_image_torch=sam.preprocess(input_image_torch)
-        predictor.featurename=cb['features_path']
+        # cb = cb.to(device)
+        # if i < 9980:
+        #     print(f"skip {i}")
+        #     i += 1
+        #     continue
+        predictor.featurename=[cb['features_path'][0].replace('features', 'features2')]
         with torch.no_grad():
             predictor.set_image(cb['resized_image'][0].numpy())
-        i=i+1
-        #if (i>50000):
-        #    break
-        # point 
-        # masks, scores, logits = predictor.predict(
-        #     point_coords=input_point,
-        #     point_labels=input_label,
-        #     multimask_output=True,
-        # )
-        
-        # index = np.argmax(scores)
-        # mask_image = masks[index]
-        
-        # #if i == 0:
-        # clean_mask.append(mask_image)
-        # # else:
-        # #     occ_mask.append(mask_image)
-        
-        # blank_image = np.zeros_like(image)
-        # plt.figure()
-        # plt.imshow(blank_image)
-        
-        # color = np.array([1.0, 1.0, 1.0])
-        # index = np.argmax(scores)
-        # mask_image = masks[index]
-        # result_image =mask_image[:,:,None]*color.reshape(1, 1, -1)
-        
-        # plt.figure(figsize=(20,20))
-        # plt.imshow(result_image)
-        # plt.axis('off')
-        # plt.savefig("{}.png".format(out_dir + '/mask_' + model_type + '_' + str(occulsion_names[i]) +  '_drop_ratio_'+str(args.drop_ratio)), bbox_inches='tight', pad_inches = 0.0)
-        # plt.show()
+        # i=i+1
         print("save occlusion mask success")
         print(i)
-        #i += 1
-    torch.cuda.empty_cache()
-    import gc 
-    gc.collect()           
+        # if i > 20001:
+        #     break
+        i += 1
+        
+        torch.cuda.empty_cache()
+        import gc 
+        gc.collect()           
     show_points(input_point, input_label, plt.gca())
     
     print("save occulsion images success") 

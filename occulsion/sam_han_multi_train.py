@@ -211,9 +211,6 @@ args = parser.parse_args()
 def main(args):
     image_embedding_avg = np.load('./model_output/mean_100.npy')
     image_embedding_avg = torch.from_numpy(image_embedding_avg).to(device)
-    #np.random.seed(args.seed)
-    #torch.manual_seed(args.seed)
-    #torch.cuda.manual_seed(args.seed)
 
     sam_checkpoint = args.sam_checkpoint
     model_type = args.model_type

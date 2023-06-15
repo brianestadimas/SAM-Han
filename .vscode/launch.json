@@ -11,11 +11,11 @@
       //"program": "${file}",
       //"console": "integratedTerminal"
 
-      "name": "Python: Multi Train",
+      "name": "Python: Multi Train tiny",
       "type": "python",
       "request": "launch",
       //"
-      "program": "occulsion/sam_han_multi_train.py",
+      "program": "occulsion/sam_han_multi_tiny.py",
       "console": "integratedTerminal",
       "args": [
         //"occulsion/sam_han_multi_train.py",
@@ -24,7 +24,7 @@
         "--sam_checkpoint",
         "./sam_vit_b_01ec64.pth",
         "--model_type",
-        "vit_b",
+        "vit_tiny",
         "--Change",
         "True",
         "--Showfig",
@@ -39,42 +39,6 @@
         // "0,1"
       ],
       "env": { "CUDA_VISIBLE_DEVICES": "5" }
-    },
-    {
-      //"name": "Python: Current File",
-      //"type": "python",
-      //"request": "launch",
-      //"program": "${file}",
-      //"console": "integratedTerminal"
-
-      "name": "Python: Feature Extractions",
-      "type": "python",
-      "request": "launch",
-      //"
-      "program": "occulsion/sam_han.py",
-      "console": "integratedTerminal",
-      "args": [
-        //"occulsion/sam_han_multi_train.py",
-        //"cplusmodel.py",sam_vit_b_01ec64
-        // "--sam_checkpoint","./sam_vit_b_01ec64.pth",
-        "--sam_checkpoint",
-        "./sam_vit_b_01ec64.pth",
-        "--model_type",
-        "vit_b",
-        // "--Change",
-        // "True",
-        // "--Showfig",
-        // "True",
-        "--optional",
-        "100",
-        "--point_coords_x",
-        "512",
-        "--point_coords_y",
-        "512"
-        // "--gpu_ids",
-        // "0,1"
-      ],
-      "env": { "CUDA_VISIBLE_DEVICES": "0" }
     },
     {
       //"name": "Python: Current File",
@@ -107,6 +71,35 @@
        
       ],
       //"env": {"CUDA_VISIBLE_DEVICES":"0"},
+  },
+  { "name": "Python: Multi Train",
+    "type": "python",
+    "request": "launch",
+    //"
+    "program": "occulsion/sam_han_multi_train.py",
+    "console": "integratedTerminal",
+    "args": [
+      //"occulsion/sam_han_multi_train.py",
+      //"cplusmodel.py",sam_vit_b_01ec64
+      //"--sam_checkpoint","./sam_vit_h_4b8939.pth",
+      "--sam_checkpoint",
+      "./sam_vit_b_01ec64.pth",
+      "--model_type",
+      "vit_b",
+      "--Change",
+      "True",
+      "--Showfig",
+      "True",
+      "--optional",
+      "100",
+      "--point_coords_x",
+      "512",
+      "--point_coords_y",
+      "512"
+      // "--gpu_ids",
+      // "0,1"
+    ],
+    "env": { "CUDA_VISIBLE_DEVICES": "5" }
   }
   ]
 }

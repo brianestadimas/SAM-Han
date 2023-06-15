@@ -199,9 +199,9 @@ args = parser.parse_args()
 #     input_image_torch = torch.as_tensor(input_image, device=self.device)
 #     input_image_torch = input_image_torch.permute(2, 0, 1).contiguous()[None, :, :, :]
 def main(args):
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed(args.seed)
+    #np.random.seed(args.seed)
+    #torch.manual_seed(args.seed)
+    #torch.cuda.manual_seed(args.seed)
 
     sam_checkpoint = args.sam_checkpoint
     model_type = args.model_type
