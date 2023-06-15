@@ -12,7 +12,7 @@ import random
 import shutil
 from torchvision import transforms
 from PIL import Image
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset,ConcatDataset
 import torch.nn as nn
 #BaseDataset = torchdata.Dataset
 batch_size = 1
@@ -21,7 +21,7 @@ import os.path
 from os.path import join
 from datetime import datetime
 from segment_anything.utils.transforms import ResizeLongestSide
-gpu_list = '5'  # Example: GPUs 0 and 1
+gpu_list = '4,5'  # Example: GPUs 0 and 1
 os.environ['CUDA_VISIBLE_DEVICES'] = gpu_list
 device = "cuda"
 #device = torch.device("cuda:0,1")
@@ -58,7 +58,11 @@ class MyDataset(Dataset):
         #self.labels = labels
         #sortkey = lambda key: os.path.split(key)[-1]
         self.datadir=datadir
-        self.fns = fns or os.listdir(join(datadir, 'images'))
+        if 'train2' in datadir:
+            self.imagedir=datadir.replace('train2','train')
+        else:
+            self.imagedir=datadir
+        self.fns = fns or os.listdir(join(datadir, 'features'))
         #self.paths = sorted(make_dataset(datadir, fns), key=sortkey)
         #if size is not None:
         #    self.paths = self.paths[:size]
@@ -67,10 +71,40 @@ class MyDataset(Dataset):
         return len(self.fns)
     
     def __getitem__(self, index):
-        fn = self.fns[index]
+        fn = self.fns[index].replace(".npy", ".jpg")
         feature_n = fn.replace(".jpg", ".npy")
         #m_img = Image.open(join(self.datadir, fn)).convert('RGB')
-        image = cv2.imread(join(self.datadir,'images', fn))
+        image = cv2.imread(join(self.imagedir,'images', fn))
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        
+        resized_image = cv2.resize(image, (1024, 1024))
+
+        features = (np.load(join(self.datadir,'features',feature_n))[0])
+        features=torch.from_numpy(features).to(device)
+        resized_image=torch.from_numpy(resized_image).to(device)
+        #y = self.labels[index]
+        return {'resized_image':resized_image,'features':features,'fn':feature_n}# y
+class MyDataset_eval(Dataset):
+    def __init__(self, datadir,fns=None):
+        #self.data = data
+        #self.labels = labels
+        #sortkey = lambda key: os.path.split(key)[-1]
+        if 'val_traineval' in datadir:
+            self.imagedir=datadir.replace('val_traineval','train')
+        else:
+            self.imagedir=datadir
+        
+        self.datadir=datadir
+        self.fns = fns or os.listdir(join(datadir, 'features'))
+
+    def __len__(self):
+                return len(self.fns)
+    
+    def __getitem__(self, index):
+        fn = self.fns[index].replace(".npy",".jpg")
+        feature_n = fn.replace(".jpg", ".npy")
+        #m_img = Image.open(join(self.datadir, fn)).convert('RGB')
+        image = cv2.imread(join(self.imagedir,'images', fn))
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         
         resized_image = cv2.resize(image, (1024, 1024))
@@ -209,8 +243,8 @@ args = parser.parse_args()
 #     input_image_torch = torch.as_tensor(input_image, device=self.device)
 #     input_image_torch = input_image_torch.permute(2, 0, 1).contiguous()[None, :, :, :]
 def main(args):
-    image_embedding_avg = np.load('./model_output/mean_100.npy')
-    image_embedding_avg = torch.from_numpy(image_embedding_avg).to(device)
+    #image_embedding_avg = np.load('./model_output/mean_100.npy')
+    #image_embedding_avg = torch.from_numpy(image_embedding_avg).to(device)
 
     sam_checkpoint = args.sam_checkpoint
     model_type = args.model_type
@@ -235,7 +269,7 @@ def main(args):
 
     #if isinstance(sam, nn.DataParallel):
     # sam = sam.module
-    num_epochs = 40
+    num_epochs = 20
     optimizer = torch.optim.Adam(model.parameters()) 
     #lambda1 = lambda epoch: math.pow(1 - epoch / args.max_epoch, args.poly_exp)
     #scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda1)
@@ -248,16 +282,18 @@ def main(args):
 
 
 
-    dataset = MyDataset('./data/train')
-    train_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
-    pascal_val_dataset = MyDataset('./data/val1')
-    eval_dataloader_pascalvoc = DataLoader(pascal_val_dataset, batch_size=1, shuffle=False)
-    sam_val_dataset = MyDataset('./data/val')
-    eval_dataloader_sam = DataLoader(sam_val_dataset, batch_size=1, shuffle=False)
-    #eval_dataloader_sam = DataLoader(val_dataset, batch_size=1, shuffle=False)
+    dataset = MyDataset('./data/train2')
+    #train_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+    train_val_dataset = MyDataset_eval('./data/val_traineval')
+    # 合并两个数据集
+    combined_dataset = ConcatDataset([dataset, train_val_dataset])
+    train_dataloader = DataLoader(combined_dataset, batch_size=batch_size, shuffle=shuffle)
 
-    #predictor = SamPredictor(sam)
-    #mse_loss = nn.MSELoss()
+
+    train_val_dataloader = DataLoader(train_val_dataset, batch_size=1, shuffle=False)
+    sam_val_dataset = MyDataset_eval('./data/val')
+    val_dataloader= DataLoader(sam_val_dataset, batch_size=1, shuffle=False)
+    current_time = datetime.now().strftime("%d%H%M%S")
     iout_sum_ture=0
     for epoch in range(num_epochs):
         iteration=0
@@ -274,7 +310,7 @@ def main(args):
             # with no_grad():
             #     image_embedding = model(input_image_torch)
             image_embedding = model(input_image_torch)
-            image_embedding = image_embedding +image_embedding_avg
+            image_embedding = image_embedding# +image_embedding_avg
             cosine_sim_avg = torch.cosine_similarity(image_embedding.view(batch_size,-1),gt_feature.view(batch_size,-1),dim=-1).mean()
             loss = 1 - cosine_sim_avg
             #optimizer.zero_grad()
@@ -284,8 +320,8 @@ def main(args):
             iteration=iteration+1
             #print(f'EPOCH: {cosine}')
             print(f'Epcoch {epoch} Iteration{iteration} Cosine_Sim_Avg: {cosine_sim_avg}')
-            # if iteration == 1:
-            #     break
+            if iteration == 1:
+                break
         scheduler.step()
         ######################################################################################test-feature-simirility              
         # cosine_sim_val=0
@@ -313,7 +349,6 @@ def main(args):
         #     torch.save(model, './model_output/'+str(epoch)+'_'+str(cosine_sim_val.cpu().numpy())+'_han_b.pth')
 
         #########################################################################################################################test-image-iou
-        current_time = datetime.now().strftime("%d%H%M%S")
         sam_h = sam_model_registry['vit_h'](checkpoint='sam_vit_h_4b8939.pth')
         sam_change = sam_model_registry['vit_h'](checkpoint='sam_vit_h_4b8939.pth')
         sam_change.image_encoder=model.module
@@ -329,7 +364,7 @@ def main(args):
         consine_predictor2_sum=0
 
         #sam_change.image_encoder=model.module
-        for cb1 in eval_dataloader_pascalvoc:
+        for cb1 in train_val_dataloader:
             if(args.optional==number):
                 break
             number=number+1
@@ -338,7 +373,7 @@ def main(args):
             image_name=image_name[:-4]
             resized_image=cb1['resized_image'][0]
             resized_image = resized_image.cpu().numpy()
-            out_dir = os.path.join(os.path.dirname(__file__) + "/test/"+'pascal_voc', image_name)
+            out_dir = os.path.join(os.path.dirname(__file__) + "/test/"+'train_eval', image_name)
             if not os.path.exists(out_dir):
                 os.makedirs(out_dir)
             input_point = np.array([[args.point_coords_x, args.point_coords_y]]) # prompt point coordinates
@@ -355,7 +390,7 @@ def main(args):
             index = np.argmax(scores)
             mask_image = masks[index]
     ########################################################################################
-            predictor2.set_image_AddAverage(resized_image)
+            predictor2.set_image(resized_image)
             masks_change, scores_change, logits_change = predictor2.predict(
                 point_coords=input_point,
                 point_labels=input_label,
@@ -404,7 +439,7 @@ def main(args):
         number=0
         consine_predictor2_sum=0
         #sam_change.image_encoder=model.module
-        for cb1 in eval_dataloader_sam:
+        for cb1 in val_dataloader:
             if(args.optional==number):
                 break
             number=number+1
@@ -413,7 +448,7 @@ def main(args):
             image_name=image_name[:-4]
             resized_image=cb1['resized_image'][0]
             resized_image = resized_image.cpu().numpy()
-            out_dir = os.path.join(os.path.dirname(__file__) + "/test/sam/", image_name)
+            out_dir = os.path.join(os.path.dirname(__file__) + "/test/eval/", image_name)
             if not os.path.exists(out_dir):
                 os.makedirs(out_dir)
             input_point = np.array([[args.point_coords_x, args.point_coords_y]]) # prompt point coordinates
@@ -434,7 +469,7 @@ def main(args):
             #predictor2 = SamPredictor(sam_change)
             #debug 
             #predictor2.feature_name=featurename
-            predictor2.set_image_AddAverage(resized_image)
+            predictor2.set_image(resized_image)
             
             #######change
             masks_change, scores_change, logits_change = predictor2.predict(
